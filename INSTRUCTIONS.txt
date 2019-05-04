@@ -1,0 +1,124 @@
+Hi Y'all!
+
+##################################################
+This tutorial was prepared by:
+		
+		John Vant
+		jvant@asu.edu
+
+MMMMMMMMMMMMMMMMMMWWWMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMW0oloONMMMMWX0KNMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMM0:,;,;oO00Oo:;;l0WMMMMMMMMMMMMMMMM
+MMMMMMMMMMMNKXNWk;,;;;,;;;,,;;;,:xO0KNMMMMMMMMMMMM
+MMMMMMMMMMXo;:cl:;:cc:;;;;;;;;;;;,,;;l0WMMMMMMMMMM
+MMMMMMMMMMXl,;;,';lk00dc;;;,,,,',;;;;,oNMMMMMMMMMM
+MMMMMMMMMMWKl,,',cx0NKxlcccc:;;cdxkd:,dWMMMMMMMMMM
+MMMMMMMMMMMMk;;codxO0OxlxKXKl,;oKNNk::0MMMMMMMMMMM
+MMMMMMMMMMMWx,ck0xdddkxoxOKKkddool::,oNMMMMMMMMMMM
+MMMMMMMMMMWO:,ckKKOxl;..,lxOkdc,...',cKMMMMMMWXKKN
+MMMMMMMMWKd;,;;clc:;'..',;:::,'..',;;,ckXWWWKxc;;d
+MMMMMWXOo:,;;;;;;;;;;;;;,,,,,'',,;;;;;,,:llc:,,;oK
+MMWXko:;,;;;;;;;;,''',;,,,,,,''..',;;;;;;;,,;lxKWM
+MXd:,,,,,,,,;;;,...',;;;;;;;;;;;,,,,;;;,;cdkKWMMMM
+0c,;,:dkOOkd:,;,,,;;;;;;;;;;;;;;;;;;,;cx0NMMMMMMMM
+0lccdKMMMMMWXl,;;;;;;;;;;;;;;;;;;;;,;xNMMMMMMMMMMM
+MWNNWMMMMMMMMk;,;;;;;;;;;;;;;;;;;;;,dWMMMMMMMMMMMM
+MMMMMMMMMMMMWd,;;;;;;;;;;;;;;;;;;;;,dWMMMMMMMMMMMM
+MMMMMMMMMMMM0:,;;;,,;;,,;;;;;;;;;;;,lNMMMMMMMMMMMM
+MMMMMMMMMMMNo,;;,;oO00kdlcc:ccc;,;;,cXMMMMMMMMMMMM
+MMMMMMMMMMMXc,;,;kWMMMMMWNNXNNNk:,;,cKMMMMMMMMMMMM
+MMMMMMMMMMMNx;,,dNMMMMMMMMMMMMMWd,;,:0MMMMMMMMMMMM
+MMMMMMMMMMMMWKO0NMMMMMMMMMMMMMMWx,;,cKMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMKl:l0WMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNKNMMMMMMMMMMMMMM
+
+##################################################
+
+Contained herein are instructions for setting up a simple MDFF simulation.
+
+The following commands shoulded be entered in the VMD TkConsole.  For clarity commands start the the % symbol.
+
+STEP 1: Setup 
+
+Navigate to the mdff-vacuo directory then type.
+
+% mol new 4ake-target.pdb
+
+Run VMD plugin AutoPSF on this structure to get a PSF file.
+
+Now run mdff sim command to get density.
+
+% package require mdff 
+
+% set sel [atomselect top all]
+
+% mdff sim $sel -res 5 -o 4ake-target autopsf.dx
+
+% mol new 4ake-target autopsf.dx
+
+Convert the simulated density to a potential map.
+
+% mdff griddx -i 4ake-target autopsf.dx -o 4ake-target autopsf-grid.dx
+
+Now prepare the initial structure we want to simulate.
+
+% mol new 1ake-initial-docked.pdb
+
+As before run the Autopsf plugin
+
+Next we choose which atoms the gridforces will apply to.
+
+% mdff gridpdb -psf 1ake-initial-docked autopsf.psf -pdb 1ake-initial-docked autopsf.pdb -o 1ake-initial-docked autopsf-grid.pdb
+
+Here we define restraints
+
+% ssrestraints -psf 1ake-initial autopsf.psf -pdb 1ake-initial-docked autopsf.pdb -o 1ake-extrabonds.txt -hbonds
+
+% mol new 1ake-initial-docked autopsf.psf
+% mol addfile 1ake-initial-docked autopsf.pdb
+
+% cispeptide restrain -o 1ake-extrabonds-cispeptide.txt
+
+% chirality restrain -o 1ake-extrabonds-chirality.txt
+
+
+Finally we run the mdff setup command to generate the necessary simulation scripts.
+
+% mdff setup -o adk -psf 1ake-initial-docked autopsf.psf
+-pdb 1ake-initial-docked autopsf.pdb
+-griddx 4ake-target autopsf-grid.dx
+-gridpdb 1ake-initial-docked autopsf-grid.pdb
+-extrab {1ake-extrabonds.txt 1ake-extrabonds-cispeptide.txt
+1ake-extrabonds-chirality.txt} -gscale 0.3 -numsteps 50000
+
+% mdff setup -o adk -psf 1ake-initial-docked autopsf.psf
+-pdb 1ake-initial-docked autopsf.pdb
+-griddx 4ake-target autopsf-grid.dx
+-gridpdb 1ake-initial autopsf-grid.pdb
+-extrab {1ake-extrabonds.txt 1ake-extrabonds-cispeptide.txt
+1ake-extrabonds-chirality.txt} -gscale 10 -minsteps 2000
+-numsteps 0 -step 2
+
+Now your done with VMD for now.
+
+STEP 2:  Run NAMD
+
+In your bash terminal run the following command.  Make sure namd2 is in your path or provide the path before the namd2 command.  E.g. /user/jvant/Downloads/naMD/NAMD_2.12_Linux-x86_64-multicore.
+
+$ namd2 adk-step1.namd > adk-step1.log
+
+After this simulation has run to completion then start step 2.
+
+$ namd2 adk-step2.namd > adk-step2.log
+
+STEP 3:  Confirm Convergence
+
+Once these are complete we can analyze the trajectory.  In the TkConsole in VMD type and enter the following.
+
+% mol new 1ake-initial-docked autopsf.psf
+% mol addfile adk-step1.dcd
+% mol addfile adk-step2.dcd
+
+To analyze convergence we use VMD's RMSD trajectory tool.
+
+I hope you enjoyed the workshop.  If you wish to continue your molecular dynamics training visit the following site for NAMD tutorials or talk to me after class.
